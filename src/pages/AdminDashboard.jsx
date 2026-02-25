@@ -79,14 +79,14 @@ function AdminDashboard() {
       <div className="bg-white rounded-2xl shadow-lg p-8 mb-12">
         <h2 className="text-xl font-semibold mb-6">All Users</h2>
 
-        <table className="w-full text-sm">
-          <thead className="border-b">
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Action</th>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="py-3 px-4">Name</th>
+              <th className="py-3 px-4">Email</th>
+              <th className="py-3 px-4">Role</th>
+              <th className="py-3 px-4">Status</th>
+              <th className="py-3 px-4">Action</th>
             </tr>
           </thead>
 
@@ -94,18 +94,18 @@ function AdminDashboard() {
             {users
               .filter(user => user.role !== "admin")
               .map((user) => (
-                <tr key={user.id} className="border-b">
-                  <td className="py-3">{user.name}</td>
-                  <td>{user.email}</td>
-                  <td className="capitalize">{user.role}</td>
-                  <td>
+                <tr key={user.id} className="border-b text-left">
+                  <td className="py-3 px-4">{user.name}</td>
+                  <td className="py-3 px-4">{user.email}</td>
+                  <td className="py-3 px-4 capitalize">{user.role}</td>
+                  <td className="py-3 px-4">
                     {user.disabled ? (
                       <span className="text-red-500">Disabled</span>
                     ) : (
                       <span className="text-green-500">Active</span>
                     )}
                   </td>
-                  <td>
+                  <td className="py-3 px-4">
                     <button
                       onClick={() => disableUser(user.id)}
                       className="text-blue-600 hover:underline"
@@ -160,16 +160,16 @@ function AdminDashboard() {
           </div>
         </div>
 
-        <table className="w-full text-sm">
-          <thead className="border-b">
-            <tr>
-              <th>Name</th>
-              <th>Owner</th>
-              <th>Expiry</th>
-              <th>Status</th>
-              <th>Renew</th>
-              <th>Verification</th>
-              <th>Delete</th>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="py-3 px-4">Name</th>
+              <th className="py-3 px-4">Owner</th>
+              <th className="py-3 px-4">Expiry</th>
+              <th className="py-3 px-4">Status</th>
+              <th className="py-3 px-4">Renew</th>
+              <th className="py-3 px-4">Verification</th>
+              <th className="py-3 px-4">Delete</th>
             </tr>
           </thead>
 
@@ -179,12 +179,12 @@ function AdminDashboard() {
                 new Date(cert.expiryDate) < today;
 
               return (
-                <tr key={cert.id} className="border-b">
-                  <td className="py-3">{cert.name}</td>
-                  <td>{getOwnerName(cert.ownerId)}</td>
-                  <td>{cert.expiryDate}</td>
+                <tr key={cert.id} className="border-b text-left">
+                  <td className="py-3 px-4">{cert.name}</td>
+                  <td className="py-3 px-4">{getOwnerName(cert.ownerId)}</td>
+                  <td className="py-3 px-4">{cert.expiryDate}</td>
 
-                  <td>
+                  <td className="py-3 px-4">
                     {cert.renewalStatus === "pending" ? (
                       <span className="text-yellow-600">Pending</span>
                     ) : isExpired ? (
@@ -194,7 +194,7 @@ function AdminDashboard() {
                     )}
                   </td>
 
-                  <td>
+                  <td className="py-3 px-4">
                     {renewingCertId === cert.id ? (
                       <div className="flex items-center gap-2">
                         <input
@@ -238,7 +238,7 @@ function AdminDashboard() {
                     )}
                   </td>
 
-                  <td>
+                  <td className="py-3 px-4">
                     {cert.verificationStatus === "pending" && (
                       <div className="flex gap-3">
                         <button
@@ -270,7 +270,7 @@ function AdminDashboard() {
                     )}
                   </td>
 
-                  <td>
+                  <td className="py-3 px-4">
                     <button
                       onClick={() => deleteCertification(cert.id)}
                       className="text-red-600 hover:underline"
@@ -297,25 +297,25 @@ function AdminDashboard() {
           </p>
         )}
 
-        <table className="w-full text-sm">
-          <thead className="border-b">
-            <tr>
-              <th>Certification</th>
-              <th>Owner</th>
-              <th>Requested On</th>
-              <th>Approve</th>
-              <th>Reject</th>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="py-3 px-4">Certification</th>
+              <th className="py-3 px-4">Owner</th>
+              <th className="py-3 px-4">Requested On</th>
+              <th className="py-3 px-4">Approve</th>
+              <th className="py-3 px-4">Reject</th>
             </tr>
           </thead>
 
           <tbody>
             {pendingRequests.map(cert => (
-              <tr key={cert.id} className="border-b">
-                <td>{cert.name}</td>
-                <td>{getOwnerName(cert.ownerId)}</td>
-                <td>{cert.renewalRequestDate?.slice(0,10)}</td>
+              <tr key={cert.id} className="border-b text-left">
+                <td className="py-3 px-4">{cert.name}</td>
+                <td className="py-3 px-4">{getOwnerName(cert.ownerId)}</td>
+                <td className="py-3 px-4">{cert.renewalRequestDate?.slice(0,10)}</td>
 
-                <td>
+                <td className="py-3 px-4">
                   {approvingRenewalId === cert.id ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -359,7 +359,7 @@ function AdminDashboard() {
                   )}
                 </td>
 
-                <td>
+                <td className="py-3 px-4">
                   <button
                     onClick={() => rejectRenewal(cert.id)}
                     className="text-red-600 hover:underline"
