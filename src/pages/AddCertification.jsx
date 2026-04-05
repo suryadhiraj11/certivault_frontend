@@ -11,7 +11,7 @@ function AddCertification() {
     issuer: "",
     issueDate: "",
     expiryDate: "",
-    visibility: "private",
+    visibility: "public",
     description: "",
   });
 
@@ -40,7 +40,7 @@ function AddCertification() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -54,7 +54,7 @@ function AddCertification() {
       return;
     }
 
-    addCertification({
+    await addCertification({
       ...formData,
       ownerId: currentUser.id,
       ownerName: currentUser.name,
@@ -66,7 +66,7 @@ function AddCertification() {
       verificationStatus: "pending",
 verifiedBy: null,
 verifiedAt: null,
-      file: fileData,
+      file: JSON.stringify(fileData),
       createdAt: new Date().toISOString(),
     });
 

@@ -1,12 +1,12 @@
 import { useContext, useState } from "react";
 import { UserContext } from "../context/UserContext";
+import API from "../api";
 
 function AdminDashboard() {
   const {
     users,
     certifications,
     deleteCertification,
-    renewCertification,
     verifyCertificate,
     rejectCertificate,
     approveRenewal,
@@ -22,6 +22,15 @@ function AdminDashboard() {
   const [renewalExpiryDate, setRenewalExpiryDate] = useState("");
   const today = new Date();
 
+  const fetchUsers = async () => {
+    try {
+      const res = await API.get("/auth/users");
+      setUsers(res.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const pendingRequests = certifications.filter(
     cert => cert.renewalStatus === "pending"
   );
@@ -36,11 +45,13 @@ function AdminDashboard() {
     return true;
   });
 
-  const disableUser = (userId) => {
-    const updated = users.map((u) =>
-      u.id === userId ? { ...u, disabled: !u.disabled } : u
-    );
-    setUsers(updated);
+  const disableUser = async (user) => {
+    try {
+      await API.put(`/auth/toggle/${user.id}`);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getOwnerName = (ownerId) => {
@@ -107,7 +118,7 @@ function AdminDashboard() {
                   </td>
                   <td className="py-3 px-4">
                     <button
-                      onClick={() => disableUser(user.id)}
+                      onClick={() => disableUser(user)}
                       className="text-blue-600 hover:underline"
                     >
                       Toggle Status
@@ -208,7 +219,7 @@ function AdminDashboard() {
                           onClick={() => {
                             if (!newExpiryDate) return;
 
-                            renewCertification(cert.id, newExpiryDate);
+                            approveRenewal(cert.id, newExpiryDate);
 
                             setRenewingCertId(null);
                             setNewExpiryDate("");

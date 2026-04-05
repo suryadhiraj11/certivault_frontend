@@ -33,8 +33,9 @@ function Login() {
     setCaptchaInput("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     if (captchaInput !== captcha) {
       setError("Captcha incorrect. Please try again.");
@@ -42,17 +43,23 @@ function Login() {
       return;
     }
 
-    const result = login(email.trim(), password.trim());
+    const result = await login(email.trim(), password.trim());
 
-    if (result.error) {
-      setError(result.error);
+    if (!result || result.error) {
+      const message = result?.error || "Login failed";
+      setError(message);
+      alert(message);
       generateCaptcha();
       return;
     }
 
-    const user = JSON.parse(localStorage.getItem("currentUser"));
+    if (!result.user) {
+      setError("User not set properly");
+      alert("User not set properly");
+      return;
+    }
 
-    if (user.role === "admin") {
+    if (result.user.role === "admin") {
       navigate("/admin");
     } else {
       navigate("/dashboard");

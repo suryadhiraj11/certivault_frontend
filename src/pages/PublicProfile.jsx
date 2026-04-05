@@ -2,6 +2,18 @@ import { useParams } from "react-router-dom";
 import { useContext, useState } from "react";
 import { UserContext } from "../context/UserContext";
 
+const parseCertFile = (file) => {
+  if (!file) return {};
+  if (typeof file === "string") {
+    try {
+      return JSON.parse(file);
+    } catch {
+      return {};
+    }
+  }
+  return file;
+};
+
 function PublicProfile() {
   const { userId } = useParams();
   const { users, certifications } =
@@ -97,6 +109,8 @@ function PublicProfile() {
 }
 
 function CertificateDetailModal({ cert, onClose }) {
+  const file = parseCertFile(cert.file);
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -194,16 +208,16 @@ function CertificateDetailModal({ cert, onClose }) {
           {cert.file && (
             <div>
               <label className="text-sm text-gray-500 font-medium block mb-2">Certificate File</label>
-              {cert.file.type.includes("image") && (
+              {file.type?.includes("image") && (
                 <img
-                  src={cert.file.data}
+                  src={file.data}
                   alt="certificate"
                   className="rounded-2xl max-h-96 w-full object-contain border"
                 />
               )}
-              {cert.file.type.includes("pdf") && (
+              {file.type?.includes("pdf") && (
                 <iframe
-                  src={cert.file.data}
+                  src={file.data}
                   className="w-full h-[500px] rounded-xl border"
                   title="PDF Preview"
                 />

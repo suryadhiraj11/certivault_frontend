@@ -2,66 +2,58 @@ import { useContext, useState } from "react";
 import { UserContext } from "../context/UserContext";
 import { Link } from "react-router-dom";
 
+const parseCertFile = (file) => {
+  if (!file) return {};
+  if (typeof file === "string") {
+    try {
+      return JSON.parse(file);
+    } catch {
+      return {};
+    }
+  }
+  return file;
+};
+
+const parseArrayField = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const normalizeProfilePic = (value) => {
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+
+  const isSupportedSrc =
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("blob:");
+
+  return isSupportedSrc ? trimmed : null;
+};
+
 function Feed() {
   const {
     certifications,
     users,
-    setCertifications,
     currentUser,
     deleteCertification,
+    toggleLike,
+    addComment,
   } = useContext(UserContext);
 
   const getUserById = (id) =>
-    users.find((u) => u.id === id);
-
-  const handleLike = (certId) => {
-    if (!currentUser) {
-      alert("Login to like");
-      return;
-    }
-
-    const updated = certifications.map((cert) => {
-      if (cert.id !== certId) return cert;
-
-      const alreadyLiked =
-        cert.likes?.includes(currentUser.id);
-
-      return {
-        ...cert,
-        likes: alreadyLiked
-          ? cert.likes.filter(
-              (id) => id !== currentUser.id
-            )
-          : [...(cert.likes || []), currentUser.id],
-      };
-    });
-
-    setCertifications(updated);
-  };
-
-  const handleComment = (certId, text) => {
-    if (!currentUser) {
-      alert("Login to comment");
-      return;
-    }
-
-    const updated = certifications.map((cert) => {
-      if (cert.id !== certId) return cert;
-
-      return {
-        ...cert,
-        comments: [
-          ...(cert.comments || []),
-          {
-            userId: currentUser.id,
-            text,
-          },
-        ],
-      };
-    });
-
-    setCertifications(updated);
-  };
+    users.find((u) => String(u.id) === String(id));
 
   const handleDelete = (certId) => {
     if (!window.confirm("Delete this certification?")) return;
@@ -89,12 +81,40 @@ function Feed() {
         {certifications.map((cert) => {
           if (cert.visibility !== "public") return null;
 
-          const owner = getUserById(cert.ownerId);
-          if (!owner) return null;
+          const owner = users.find(
+            (u) => String(u.id) === String(cert.ownerId)
+          ) || {
+            id: cert.ownerId,
+            name: cert.ownerName || "User",
+            profilePic: null,
+          };
+
+          const ownerProfilePic = normalizeProfilePic(
+            owner.profilePic ||
+            cert.ownerProfilePic ||
+            (String(currentUser?.id) === String(cert.ownerId)
+              ? currentUser?.profilePic
+              : null)
+          );
+
+          const file = parseCertFile(cert.file);
+          let likes = [];
+
+          if (Array.isArray(cert.likes)) {
+            likes = cert.likes;
+          } else if (typeof cert.likes === "string") {
+            try {
+              likes = JSON.parse(cert.likes);
+            } catch {
+              likes = [];
+            }
+          }
+
+          const parsedComments = parseArrayField(cert.comments);
 
           const liked =
             currentUser &&
-            cert.likes?.includes(currentUser.id);
+            likes.includes(currentUser?.id);
 
           const canDelete =
             currentUser &&
@@ -116,15 +136,15 @@ function Feed() {
                 >
                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-purple-400 to-pink-400 
                                   ring-2 ring-purple-200 dark:ring-purple-800 transition-transform group-hover:scale-110">
-                    {owner.profilePic ? (
+                    {ownerProfilePic ? (
                       <img
-                        src={owner.profilePic}
+                        src={ownerProfilePic}
                         alt="profile"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="flex items-center justify-center h-full font-bold text-white text-lg">
-                        {owner.name[0]}
+                        {(owner.name || "U")[0]}
                       </div>
                     )}
                   </div>
@@ -203,17 +223,17 @@ function Feed() {
               {/* FILE PREVIEW */}
               {cert.file && (
                 <div className="mt-6 rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-900/50 p-2">
-                  {cert.file.type.includes("image") && (
+                  {file.type?.includes("image") && (
                     <img
-                      src={cert.file.data}
+                      src={file.data}
                       alt="certificate"
                       className="rounded-xl max-h-96 w-full object-contain"
                     />
                   )}
 
-                  {cert.file.type.includes("pdf") && (
+                  {file.type?.includes("pdf") && (
                     <iframe
-                      src={cert.file.data}
+                      src={file.data}
                       className="w-full h-[400px] rounded-xl"
                       title="PDF Preview"
                     />
@@ -225,7 +245,7 @@ function Feed() {
               <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <button
-                    onClick={() => handleLike(cert.id)}
+                    onClick={() => toggleLike(cert.id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all 
                                ${liked 
                                  ? "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400" 
@@ -241,14 +261,14 @@ function Feed() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
                     )}
-                    <span>{(cert.likes || []).length}</span>
+                    <span>{likes.length}</span>
                   </button>
 
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                     </svg>
-                    <span>{(cert.comments || []).length} {(cert.comments || []).length === 1 ? 'comment' : 'comments'}</span>
+                    <span>{parsedComments.length} {parsedComments.length === 1 ? 'comment' : 'comments'}</span>
                   </div>
                 </div>
 
@@ -262,14 +282,17 @@ function Feed() {
                 </h3>
 
                 <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {(cert.comments || []).length === 0 && (
+                  {parsedComments.length === 0 && (
                     <p className="text-sm text-gray-400 dark:text-gray-500 italic text-center py-4">
                       No comments yet. Be the first to comment!
                     </p>
                   )}
 
-                  {(cert.comments || []).map((c, i) => {
+                  {parsedComments.map((c, i) => {
                     const commentUser = getUserById(c.userId);
+                    const commentUserProfilePic = normalizeProfilePic(
+                      commentUser?.profilePic
+                    );
 
                     return (
                       <div
@@ -279,7 +302,15 @@ function Feed() {
                       >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 
                                         flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {commentUser?.name?.[0] || '?'}
+                          {commentUserProfilePic ? (
+                            <img
+                              src={commentUserProfilePic}
+                              alt="comment user"
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            commentUser?.name?.[0] || '?'
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="font-semibold text-purple-600 dark:text-purple-400 text-sm">
@@ -293,7 +324,7 @@ function Feed() {
                 </div>
 
                 <CommentInput
-                  onSubmit={(text) => handleComment(cert.id, text)}
+                  onSubmit={(text) => addComment(cert.id, text)}
                 />
               </div>
               </div>

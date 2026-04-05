@@ -1,5 +1,57 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/UserContext";
+
+const MAX_PROFILE_IMAGE_SIZE_MB = 5;
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const resizeImageToDataUrl = (file, maxWidth = 512, maxHeight = 512, quality = 0.8) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+        const width = Math.round(img.width * ratio);
+        const height = Math.round(img.height * ratio);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to process image."));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const parseCertFile = (file) => {
+  if (!file) return {};
+  if (typeof file === "string") {
+    try {
+      return JSON.parse(file);
+    } catch {
+      return {};
+    }
+  }
+  return file;
+};
 
 function Profile() {
   const {
@@ -18,6 +70,13 @@ function Profile() {
     currentUser?.profilePic || null
   );
   const [selectedCert, setSelectedCert] = useState(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setNewName(currentUser.name || "");
+    setProfilePic(currentUser.profilePic || null);
+  }, [currentUser?.id, currentUser?.name, currentUser?.profilePic]);
 
   if (!currentUser) return null;
 
@@ -34,9 +93,31 @@ function Profile() {
     0
   );
 
-  const handleProfileUpdate = () => {
-    updateProfile({ name: newName, profilePic });
+  const handleProfileUpdate = async () => {
+    if (!newName.trim()) {
+      alert("Name cannot be empty.");
+      return;
+    }
+
+    const payload = {
+      name: newName.trim(),
+    };
+
+    if (profilePic !== (currentUser.profilePic || null)) {
+      payload.profilePic = profilePic;
+    }
+
+    setIsSavingProfile(true);
+    const result = await updateProfile(payload);
+    setIsSavingProfile(false);
+
+    if (!result || result.error) {
+      alert(result?.error || "Failed to update profile.");
+      return;
+    }
+
     setEditMode(false);
+    alert("Profile updated");
   };
 
   const handlePasswordChange = () => {
@@ -46,15 +127,27 @@ function Profile() {
     alert("Password updated");
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfilePic(reader.result);
-    };
-    reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file for profile picture.");
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_IMAGE_SIZE_MB * 1024 * 1024) {
+      alert("Image is too large. Please choose an image under 5MB.");
+      return;
+    }
+
+    try {
+      const compressedDataUrl = await resizeImageToDataUrl(file);
+      setProfilePic(compressedDataUrl);
+    } catch {
+      const fallbackDataUrl = await readFileAsDataUrl(file);
+      setProfilePic(fallbackDataUrl);
+    }
   };
 
   return (
@@ -93,6 +186,7 @@ function Profile() {
 
                   <input
                     type="file"
+                    accept="image/*"
                     onChange={handleFileChange}
                     className="block mt-3 text-sm text-gray-500"
                   />
@@ -100,9 +194,10 @@ function Profile() {
                   <div className="mt-4 flex gap-3">
                     <button
                       onClick={handleProfileUpdate}
+                      disabled={isSavingProfile}
                       className="px-5 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition"
                     >
-                      Save Changes
+                      {isSavingProfile ? "Saving..." : "Save Changes"}
                     </button>
                     <button
                       onClick={() => setEditMode(false)}
@@ -321,6 +416,8 @@ function CertificationCard({
 }
 
 function CertificateDetailModal({ cert, onClose }) {
+  const file = parseCertFile(cert.file);
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -456,16 +553,16 @@ function CertificateDetailModal({ cert, onClose }) {
           {cert.file && (
             <div>
               <label className="text-sm text-gray-500 font-medium block mb-2">Certificate File</label>
-              {cert.file.type.includes("image") && (
+              {file.type?.includes("image") && (
                 <img
-                  src={cert.file.data}
+                  src={file.data}
                   alt="certificate"
                   className="rounded-2xl max-h-96 w-full object-contain border"
                 />
               )}
-              {cert.file.type.includes("pdf") && (
+              {file.type?.includes("pdf") && (
                 <iframe
-                  src={cert.file.data}
+                  src={file.data}
                   className="w-full h-[500px] rounded-xl border"
                   title="PDF Preview"
                 />
