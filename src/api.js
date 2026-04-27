@@ -1,10 +1,10 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:8080/api"
+  baseURL: `${import.meta.env.VITE_API_URL}/api`
 });
 
-// ✅ REQUEST INTERCEPTOR (already correct)
+// REQUEST INTERCEPTOR
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
@@ -15,18 +15,15 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// 🔥 ADD THIS (VERY IMPORTANT)
+// RESPONSE INTERCEPTOR
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      
-      // 🔥 TOKEN EXPIRED / INVALID
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
       alert("Session expired. Please login again.");
-
       window.location.href = "/login";
     }
 
